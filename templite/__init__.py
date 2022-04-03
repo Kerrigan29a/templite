@@ -133,15 +133,15 @@ class Templite(object):
         # add relpath method
         def relpath(file):
             if os.path.isabs(file):
-                return file
-            return os.path.join(base, file)
+                return os.path.relpath(file, base)
+            return file
         namespace['relpath'] = relpath
 
         # add abspath method
         def abspath(file):
             if os.path.isabs(file):
-                return os.path.relpath(file, base)
-            return file
+                return file
+            return os.path.join(base, file)
         namespace['abspath'] = abspath
 
         # add write method
