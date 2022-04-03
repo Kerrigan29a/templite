@@ -30,7 +30,8 @@ __version__ = '0.0.1'
 
 class Templite(object):
     
-    autowrite = re.compile('(^[\'\"])|(^[a-zA-Z0-9_\[\]\'\"]+$)')
+    # Prefixes from: https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
+    autowrite = re.compile('(^(r|u|R|U|f|F|fr|Fr|fR|FR|rf|rF|Rf|RF)?[\'\"])|(^[a-zA-Z0-9_\[\]\'\"]+$)')
     delimiters = ('{%', '%}')
     cache = {}
 

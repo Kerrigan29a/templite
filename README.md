@@ -51,6 +51,8 @@ loop index is {% i %}
 Single variables and expressions starting with quotes are substituted
 automatically:
 Instead of {% write(x) %} you can write {% x %} or {% '%s' % x %} or {% "", x %}
+You can also use prefixed strings: {% r"hi" %} or {% f"hi" %}
+or {% fr"hi" %} or {% rf"hi" %}
 Therefore standalone statements like break, continue or pass
 must be enclosed by a semicolon: {\%continue;%\}
 
@@ -128,6 +130,8 @@ loop index is 7
 Single variables and expressions starting with quotes are substituted
 automatically:
 Instead of 8 you can write 8 or 8 or 8
+You can also use prefixed strings: hi or hi
+or hi or hi
 Therefore standalone statements like break, continue or pass
 must be enclosed by a semicolon: {%continue;%}
 
