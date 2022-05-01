@@ -20,21 +20,43 @@
 # this program. If not, see <https://www.gnu.org/licenses/>.
 
 from setuptools import setup, find_packages
-from templite import __version__
+from pathlib import Path
+from templite import __version__, __author__, __email__, __license__, __doc__
+
+base = Path(__file__).parent
+long_description = (base / "README.md").read_text()
 
 setup(
     name='templite',
     version=__version__,
-    url='https://github.com/Kerrigan29a/templite.git',
-    author='Javier Escalada Gómez',
-    author_email='kerrigan29a@gmail.com',
-    description='A light-weight, fully functional, general purpose templating engine',
-    packages=find_packages(),    
+    url='https://github.com/Kerrigan29a/templite',
+    project_urls={
+        "Source": "https://github.com/Kerrigan29a/templite",
+    },
+    author=__author__,
+    author_email=__email__,
+    description=__doc__,
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    packages=find_packages(),
     install_requires=[],
-    license='GNU GPLv3',
+    license=__license__,
     entry_points={
         'console_scripts': [
             'templite=templite:main',
         ],
     },
+    # From https://pypi.org/classifiers/
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Environment :: Console",
+        "Intended Audience :: End Users/Desktop",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: BSD License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3 :: Only",
+        "Topic :: Utilities",
+    ],
+    platforms="any",
+    keywords=["template"],
 )

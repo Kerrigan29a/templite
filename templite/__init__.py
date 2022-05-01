@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Copyright (c) 2022 Javier Escalada Gómez
 # All rights reserved.
 #
@@ -19,16 +21,23 @@
 # You should have received a copy of the GNU General Public License along with
 # this program. If not, see <https://www.gnu.org/licenses/>.
 
+"""
+A light-weight, fully functional, general purpose templating engine.
+"""
+
 import sys
-import os
 import re
 import argparse
+from pathlib import Path
 
 
-__version__ = '0.0.1'
+__author__ = "Javier Escalada Gómez"
+__email__ = "kerrigan29a@gmail.com"
+__version__ = "0.1.0"
+__license__ = "GNU GPLv3"
 
 
-class Templite(object):
+class Templite:
     
     # Prefixes from: https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
     autowrite = re.compile('(^(r|u|R|U|f|F|fr|Fr|fR|FR|rf|rF|Rf|RF)?[\'\"])|(^[a-zA-Z0-9_\[\]\'\"]+$)')
@@ -41,9 +50,9 @@ class Templite(object):
         
         # Set defaults
         if filename:
-            filename = os.path.abspath(filename)
-            mtime = os.path.getmtime(filename)
-            self.file = key = filename
+            self.file = filename = Path(filename).resolve(True)
+            mtime = filename.stat().st_mtime
+            key = str(filename)
         elif text is not None:
             self.file = mtime = None
             key = hash(text)
@@ -76,10 +85,9 @@ class Templite(object):
     
     def _compile(self, source):
         offset = 0
-        tokens = ['# -*- coding: %s -*-' % self.encoding]
+        tokens = [f'# -*- coding: {self.encoding} -*-']
         start, end = self.delimiters
-        escaped = (re.escape(start), re.escape(end))
-        code_regex = re.compile('%s(.*?)%s' % escaped, re.DOTALL)
+        code_regex = re.compile(f'{re.escape(start)}(.*?){re.escape(end)}', re.DOTALL)
         skip_newline_regex = re.compile(r'\\(\r\n|\r|\n)[ \t]*')
 
         for i, part in enumerate(code_regex.split(source)):
@@ -90,7 +98,7 @@ class Templite(object):
                     continue
                 part = skip_newline_regex.sub("", part)
                 part = part.replace('\\', '\\\\').replace('"', '\\"')
-                part = '\t' * offset + 'write("""%s""")' % part
+                part = '\t' * offset + f'write("""{part}""")'
             else:
                 original_part = str(part)
                 part = part.rstrip()
@@ -99,14 +107,14 @@ class Templite(object):
                 part_stripped = part.lstrip()
                 if part_stripped.startswith(':'):
                     if not offset:
-                        raise SyntaxError('no block statement to terminate: %s%s%s' % (
+                        raise SyntaxError('no block statement to terminate: {}{}{}'.format(
                             self.delimiters[0], original_part, self.delimiters[1]))
                     offset -= 1
                     part = part_stripped[1:]
                     if not part.endswith(':'):
                         continue
                 elif self.autowrite.match(part_stripped):
-                    part = 'write(%s)' % part_stripped
+                    part = f'write({part_stripped})'
                 lines = part.splitlines()
                 margin = min(len(l) - len(l.lstrip()) for l in lines if l.strip())
                 part = '\n'.join('\t' * offset + l[margin:] for l in lines)
@@ -114,7 +122,7 @@ class Templite(object):
                     offset += 1
             tokens.append(part)
         if offset:
-            raise SyntaxError('%i block statement(s) not terminated' % offset)
+            raise SyntaxError(f'{offset} block statement(s) not terminated')
         
         generated_code = '\n'.join(tokens)
         if self.generated_code is not None:
@@ -125,24 +133,23 @@ class Templite(object):
         """Renders the template according to the given namespace."""
         stack = []
         namespace['__file__'] = self.file
-
         if self.file:
-            base = os.path.dirname(self.file)
+            cwd = Path(self.file).resolve(True).parent
         else:
-            base = os.path.dirname(sys.argv[0])
+            cwd = Path(sys.argv[0]).resolve(True).parent
+        namespace['__cwd__'] = cwd
         
         # add relpath method
         def relpath(file):
-            if os.path.isabs(file):
-                return os.path.relpath(file, base)
-            return file
+            return Path(file).resolve(True).relative_to(cwd)
         namespace['relpath'] = relpath
 
         # add abspath method
         def abspath(file):
-            if os.path.isabs(file):
-                return file
-            return os.path.join(base, file)
+            file = Path(file)
+            if file.is_absolute():
+                return file.resolve(True)
+            return cwd / file
         namespace['abspath'] = abspath
 
         # add write method
