@@ -33,7 +33,7 @@ import argparse
 
 __author__ = "Javier Escalada Gómez"
 __email__ = "kerrigan29a@gmail.com"
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __license__ = "GNU GPLv3"
 
 
@@ -137,35 +137,41 @@ class Templite:
         else:
             cwd = os.path.dirname(sys.argv[0])
         namespace['__cwd__'] = cwd
-        
-        # add relpath method
+
+        # Add relpath        
         def relpath(file):
             if os.path.isabs(file):
                 return os.path.relpath(file, cwd)
             return file
         namespace['relpath'] = relpath
 
-        # add abspath method
+        # Add abspath
         def abspath(file):
             if os.path.isabs(file):
                 return file
             return os.path.join(cwd, file)
         namespace['abspath'] = abspath
 
-        # add write method
+        # Add write
         def write(*args):
             for value in args:
                 stack.append(str(value))
         namespace['write'] = write
 
-        # add include method
+        # Add include
         def include(file):
             stack.append(Templite(None, abspath(file), self.encoding,
                     self.delimiters,self.caching, self.generated_code)
                 .render(**namespace))
         namespace['include'] = include
-        
-        # execute template code
+    
+        # Inject namespace to external functions
+        for k, v in namespace.items():
+            if k not in ['relpath', 'abspath', 'write', 'include'] and callable(v):
+                # Be careful with what is done with namespace
+                namespace[k] = v(namespace)
+
+        # Execute template code
         exec(self._code, namespace)
         return "".join(stack)
 
