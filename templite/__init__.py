@@ -26,14 +26,14 @@ A light-weight, fully functional, general purpose templating engine.
 """
 
 import sys
+import os.path
 import re
 import argparse
-from pathlib import Path
 
 
 __author__ = "Javier Escalada Gómez"
 __email__ = "kerrigan29a@gmail.com"
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __license__ = "GNU GPLv3"
 
 
@@ -42,7 +42,7 @@ class Templite:
     # Prefixes from: https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
     autowrite = re.compile('(^(r|u|R|U|f|F|fr|Fr|fR|FR|rf|rF|Rf|RF)?[\'\"])|(^[a-zA-Z0-9_\[\]\'\"]+$)')
     delimiters = ('{%', '%}')
-    cache = {}
+    cache = {} # type: ignore
 
     def __init__(self, text=None, filename=None, encoding='utf-8',
             delimiters=None, caching=False, generated_code=None):
@@ -50,9 +50,8 @@ class Templite:
         
         # Set defaults
         if filename:
-            self.file = filename = Path(filename).resolve(True)
-            mtime = filename.stat().st_mtime
-            key = str(filename)
+            self.file = key = filename = os.path.abspath(filename)
+            mtime = os.path.getmtime(filename)
         elif text is not None:
             self.file = mtime = None
             key = hash(text)
@@ -134,22 +133,23 @@ class Templite:
         stack = []
         namespace['__file__'] = self.file
         if self.file:
-            cwd = Path(self.file).resolve(True).parent
+            cwd = os.path.dirname(self.file)
         else:
-            cwd = Path(sys.argv[0]).resolve(True).parent
+            cwd = os.path.dirname(sys.argv[0])
         namespace['__cwd__'] = cwd
         
         # add relpath method
         def relpath(file):
-            return Path(file).resolve(True).relative_to(cwd)
+            if os.path.isabs(file):
+                return os.path.relpath(file, cwd)
+            return file
         namespace['relpath'] = relpath
 
         # add abspath method
         def abspath(file):
-            file = Path(file)
-            if file.is_absolute():
-                return file.resolve(True)
-            return cwd / file
+            if os.path.isabs(file):
+                return file
+            return os.path.join(cwd, file)
         namespace['abspath'] = abspath
 
         # add write method
