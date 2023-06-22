@@ -35,7 +35,8 @@ loop index is {% i %}
 
 As you can see the previous text is generating too much line-breaks. To avoid
 this, you can skip them adding '\' at the end of the line. In general is a good
-practice to skip line-breaks after control-flow statements. Like in the following example:
+practice to skip line-breaks after control-flow statements. Like in the
+following example:
 
 {% if x > 10: %}{% # skipped linebreak  %}\
 x is greater than 10
@@ -47,6 +48,14 @@ x is not greater than 5
 {% for i in range(x): %}{% # skipped linebreak  %}\
 loop index is {% i %}
 {% :rof >>>-(@_@)--> %}{% # skipped linebreak  %}\
+
+But be careful, adding any other character between the backslash and the new
+line character will break the rule and the backslash, and the following
+characters will be printed:
+
+{% for i in range(3): %}{% # skipped linebreak  %}\
+line ending with backslash and an additional space \ 
+{% :end-for %}{% # skipped linebreak  %}\
 
 Single variables and expressions starting with quotes are substituted
 automatically:
@@ -74,6 +83,7 @@ path of a file based on the parent directory of:
 - the template file, when Templite is used with a file
 - or the called script, when Templite is used with a string
 """
+
 print(Templite(template).render(x=8))
 ```
 
@@ -114,7 +124,8 @@ loop index is 7
 
 As you can see the previous text is generating too much line-breaks. To avoid
 this, you can skip them adding '\' at the end of the line. In general is a good
-practice to skip line-breaks after control-flow statements. Like in the following example:
+practice to skip line-breaks after control-flow statements. Like in the
+following example:
 
 x is greater than 5
 
@@ -126,6 +137,14 @@ loop index is 4
 loop index is 5
 loop index is 6
 loop index is 7
+
+But be careful, adding any other character between the backslash and the new
+line character will break the rule and the backslash, and the following
+characters will be printed:
+
+line ending with backslash and an additional space \
+line ending with backslash and an additional space \
+line ending with backslash and an additional space \
 
 Single variables and expressions starting with quotes are substituted
 automatically:
