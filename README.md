@@ -78,7 +78,7 @@ To strip the trailing whitespace, add ` -` to the end of the last delimiter.
 'Hi good world!'
 ```
 
-Alternativelly you can strip the whitespaces surrounding `good`.
+Alternatively, you can strip the whitespaces surrounding `good`.
 
 ```python
 >>> render = compile("Hi {% if True: -%} good {%- :end %} world!")
@@ -129,15 +129,15 @@ To solve this problem, templite provides a way to declare the end.
         {% statement 1 inside else %}
     {% :end %}
 
-In templite, the colons (`:`) are used to declare begin and end of a region of code.
+In templite, the colons (`:`) are used to declare the beginning and end of a code region.
 
-1. If the statement ends with a colon, the next lines are indented.
+1. If the statement ends with a colon, the following lines are indented.
    Like in `if` or `for` statements.
-2. If the statement starts and ends with a colon, the current line is unindented but the next lines are indented again.
+2. If the statement starts and ends with a colon, the current line is unindented but the following lines are indented again.
    Like in `else` or `elif` statements.
 3. If the statement starts (but not ends) with a colon, the current line is unindented.
    One additional thing to note is that the text after the colon is ignored.
-   This is used to declare the end of a region of code.
+   This is used to declare the end of a code region.
    In the example above, we use `:end`, but you can use any text you want, like `:endif`, `:fi` or even `:`.
 
 ## Built-ins
@@ -151,6 +151,21 @@ You can use the following variables and functions in your templates:
 * `include(name)`: Includes another template.
 * `relpath(path)`: Returns the `path` relative to `__cwd__`.
 * `abspath(path)`: Returns the absolute path of `path` relative to `__cwd__`.
+
+## Adding more functions
+
+You can add more functions to the templates by passing them to the `render` function.
+
+~~~python
+>>> def decorate(namespace):
+...     def f(name):
+...         return f"Mr. {name}"
+...     return f
+...
+>>> render = compile(r"Hello {{ decorate('John') }}")
+>>> render(decorate=decorate)
+'Hello Mr. John'
+~~~
 
 # Usage
 ~~~
