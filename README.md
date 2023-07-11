@@ -152,7 +152,7 @@ You can use the following variables and functions in your templates:
 * `relpath(path)`: Returns the `path` relative to `__cwd__`.
 * `abspath(path)`: Returns the absolute path of `path` relative to `__cwd__`.
 
-## Adding more functions
+## Adding extra functions
 
 You can add more functions to the templates by passing them to the `render` function.
 
