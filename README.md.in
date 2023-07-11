@@ -1,0 +1,155 @@
+A light-weight, fully functional, general purpose template-ing engine.
+
+# The syntax
+
+A template is just a text file where delimited blocks of Python code are evaluated.
+
+There are three types of blocks:
+
+* `{{` and `}}` delimit expression blocks.
+  The expression is evaluated and the string representation of the result is written to the output.
+
+  ```python
+  >>> render = compile("The result is {{ 1 + 1 }}")
+  >>> render()
+  'The result is 2'
+  ```
+  
+* `{%` and `%}` delimit statement blocks.
+  The statement is executed.
+
+  ```python
+  >>> render = compile("Hi {% if True: %} good {% :end %} world!")
+  >>> render()
+  'Hi  good  world!'
+  ```
+
+* `{#` and `#}` delimit comment blocks.
+  The comment is ignored.
+
+  ```python
+  >>> render = compile("Hi {# This is a comment #} world!")
+  >>> render()
+  'Hi  world!'
+  ```
+
+If you want to use the delimiters in the output, you can escape them with a backslash.
+
+```python
+>>> render = compile(r"This is not an expression block: \{{ \}}")
+>>> render()
+'This is not an expression block: {{ }}'
+>>> render = compile(r"This is not a statement block: \{% \%}")
+>>> render()
+'This is not a statement block: {% %}'
+>>> render = compile(r"This is not a comment block: \{# \#}")
+>>> render()
+'This is not a comment block: {# #}'
+```
+
+## Spacing
+
+By default, all text between code blocks is copied verbatim to the output.
+However most of the time, you will want to strip the whitespace before and after the code block.
+Those spaces are there to make the template more readable, but you don't want them in the output.
+In order to strip the whitespace, you can add a `-` and a whitespace to the delimiters.
+
+In this example the whitespace before and after the expression block are unwanted.
+
+```python
+>>> render = render = compile("Hi {% if True: %} good {% :end %} world!")
+>>> render()
+'Hi  good  world!'
+```
+
+To strip the preceding whitespace, add `- ` to the beginning of the first delimiter.
+
+```python
+>>> render = compile("Hi {%- if True: %} good {% :end %} world!")
+>>> render()
+'Hi good  world!'
+```
+
+To strip the trailing whitespace, add ` -` to the end of the last delimiter.
+
+```python
+>>> render = compile("Hi {%- if True: %} good {% :end -%} world!")
+>>> render()
+'Hi good world!'
+```
+
+Alternativelly you can strip the whitespaces surrounding `good`.
+
+```python
+>>> render = compile("Hi {% if True: -%} good {%- :end %} world!")
+>>> render()
+'Hi good world!'
+```
+
+But if you strip them all, you will get something unexpected.
+
+```python
+>>> render = compile("Hi {%- if True: -%} good {%- :end -%} world!")
+>>> render()
+'Higoodworld!'
+```
+
+**REMEMBER:** Don't forget the space surrounding the `-`.
+
+```python
+>>> render = compile("Result: {{- 3}}")
+>>> render()
+'Result:3'
+>>> render = compile("Result: {{-3}}")
+>>> render()
+'Result: -3'
+```
+
+## Statements and indentation
+
+As you know, Python uses indentation to delimit regions of code.
+
+    statement 1 outside if
+    if condition:
+        # This indentation is relevant
+        statement 1 inside then
+    else:
+        statement 1 inside else
+    statement 2 outside if
+
+However, in templite, the indentation outside of code blocks is treated as data,
+so, you cannot use indentation to declare the end of a region of code.
+To solve this problem, templite provides a way to declare the end.
+
+    {% statement 1 outside if %}
+    {% if condition: %}
+        {# This indentation is irrelevant #}
+        {% statement 1 inside then %}
+    {% :else: %}
+        {% statement 1 inside else %}
+    {% :end %}
+
+In templite, the colons (`:`) are used to declare begin and end of a region of code.
+
+1. If the statement ends with a colon, the next lines are indented.
+   Like in `if` or `for` statements.
+2. If the statement starts and ends with a colon, the current line is unindented but the next lines are indented again.
+   Like in `else` or `elif` statements.
+3. If the statement starts (but not ends) with a colon, the current line is unindented.
+   One additional thing to note is that the text after the colon is ignored.
+   This is used to declare the end of a region of code.
+   In the example above, we use `:end`, but you can use any text you want, like `:endif`, `:fi` or even `:`.
+
+## Built-ins
+
+You can use the following variables and functions in your templates:
+
+* `__file__`: The name of the template being compiled or `<string>`.
+* `__cwd__`: The directory where the template is located if `__file__` is not `<string>`.
+   Otherwise, the current working directory.
+* `write(obj)`: Writes the string representation of `obj` to the output.
+* `include(name)`: Includes another template.
+* `relpath(path)`: Returns the `path` relative to `__cwd__`.
+* `abspath(path)`: Returns the absolute path of `path` relative to `__cwd__`.
+
+# Usage

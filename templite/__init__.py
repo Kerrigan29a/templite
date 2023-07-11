@@ -1,180 +1,257 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 Javier Escalada Gómez
+# Copyright (c) 2023 Javier Escalada Gómez
 # All rights reserved.
-#
-# Based on Templite+ by Thimo Kraemer <thimo.kraemer@joonis.de>
-# Copyright (c) 2009 joonis new media
-# From: http://www.joonis.de/de/code/templite
-#
-# Based on Templite by Tomer Filiba
-# From: http://code.activestate.com/recipes/496702/
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, version 3.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program. If not, see <https://www.gnu.org/licenses/>.
+# License: BSD 3-Clause Clear License (see LICENSE for details)
 
 """
-A light-weight, fully functional, general purpose templating engine.
+It provide all the functionality.
 """
-
-import sys
-import os.path
-import re
-import argparse
-
 
 __author__ = "Javier Escalada Gómez"
 __email__ = "kerrigan29a@gmail.com"
-__version__ = "0.3.0"
-__license__ = "GNU GPLv3"
+__version__ = "0.4.0"
+__license__ = "BSD 3-Clause Clear License"
+
+import argparse
+import os
+import re
+from builtins import compile as _compile
+import sys
+from contextlib import contextmanager
 
 
-class Templite:
+DELIMITERS = ('{%', '%}', '{{', '}}', '{#', '#}')
+ENCODING = 'utf-8'
+INDENT = ' ' * 4
+
+_RSTRIP_PREV = object()
+_LSTRIP_NEXT = object()
+
+
+def compile(src, name=None, encoding=ENCODING, delimiters=DELIMITERS, tmpcode=None):
+    """Compiles a template into a function."""
     
-    # Prefixes from: https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
-    autowrite = re.compile('(^(r|u|R|U|f|F|fr|Fr|fR|FR|rf|rF|Rf|RF)?[\'\"])|(^[a-zA-Z0-9_\[\]\'\"]+$)')
-    delimiters = ('{%', '%}')
-    cache = {} # type: ignore
+    if hasattr(src, 'read'):
+        src = src.read()
 
-    def __init__(self, text=None, filename=None, encoding='utf-8',
-            delimiters=None, caching=False, generated_code=None):
-        """Loads a template from string or file."""
-        
-        # Set defaults
-        if filename:
-            self.file = key = filename = os.path.abspath(filename)
-            mtime = os.path.getmtime(filename)
-        elif text is not None:
-            self.file = mtime = None
-            key = hash(text)
-        else:
-            raise ValueError('either text or filename required')
-        
-        # Set attributes
-        self.encoding = encoding
-        self.caching = caching
-        self.generated_code = generated_code
-        if delimiters:
-            start, end = delimiters
-            if len(start) != 2 or len(end) != 2:
-                raise ValueError('each delimiter must be two characters long')
-            self.delimiters = delimiters
+    begs, ends, bege, ende, begc, endc = delimiters
+    beg_pattern = rf'{begs}|{bege}|{begc}'
+    end_pattern = rf'{ends}|{ende}|{endc}'
+    depth = 0
+    code = [f'# -*- coding: {encoding} -*-']
 
-        # Check cache
-        cache = self.cache
-        if caching and key in cache and cache[key][0] == mtime:
-            self._code = cache[key][1]
-            return
+    def split(src):
+        i = 0
+        for m in re.finditer(fr'({beg_pattern})(.*?)({end_pattern})', src, flags=re.DOTALL):
+            yield True, "", src[i:m.start()], ""
+            yield False, m.group(1), m.group(2), m.group(3)
+            i = m.end()
+        yield True, "", src[i:], ""
 
-        # Compile code
-        if text is None:
-            with open(filename, "r", encoding=encoding) as fh:
-                text = fh.read()
-        self._code = self._compile(text)
-        if caching:
-            cache[key] = (mtime, self._code)
+    def push(line):
+        code.append(INDENT * depth + line)
     
-    def _compile(self, source):
-        offset = 0
-        tokens = [f'# -*- coding: {self.encoding} -*-']
-        start, end = self.delimiters
-        code_regex = re.compile(f'{re.escape(start)}(.*?){re.escape(end)}', re.DOTALL)
-        skip_newline_regex = re.compile(r'\\(\r\n|\r|\n)[ \t]*')
+    # Replace escaped delimiters
+    src = src.replace(f'\\{begs}', "\\".join(begs))
+    src = src.replace(f'\\{ends}', "\\".join(ends))
+    src = src.replace(f'\\{bege}', "\\".join(bege))
+    src = src.replace(f'\\{ende}', "\\".join(ende))
+    src = src.replace(f'\\{begc}', "\\".join(begc))
+    src = src.replace(f'\\{endc}', "\\".join(endc))
+    
 
-        for i, part in enumerate(code_regex.split(source)):
-            part = part.replace('\\'.join(start), start)
-            part = part.replace('\\'.join(end), end)
-            if i % 2 == 0:
-                if not part:
-                    continue
-                part = skip_newline_regex.sub("", part)
-                part = part.replace('\\', '\\\\').replace('"', '\\"')
-                part = '\t' * offset + f'write("""{part}""")'
-            else:
-                original_part = str(part)
-                part = part.rstrip()
-                if not part:
-                    continue
-                part_stripped = part.lstrip()
-                if part_stripped.startswith(':'):
-                    if not offset:
-                        raise SyntaxError('no block statement to terminate: {}{}{}'.format(
-                            self.delimiters[0], original_part, self.delimiters[1]))
-                    offset -= 1
-                    part = part_stripped[1:]
-                    if not part.endswith(':'):
+    # Process blocks
+    for is_data, beg, block, end in split(src):
+        # Replace escaped delimiters
+        block = block.replace("\\".join(begs), begs)
+        block = block.replace("\\".join(ends), ends)
+        block = block.replace("\\".join(bege), bege)
+        block = block.replace("\\".join(ende), ende)
+        block = block.replace("\\".join(begc), begc)
+        block = block.replace("\\".join(endc), endc)
+
+        # Process data blocks
+        if is_data:
+            if not block:
+                continue
+            push(f'write(r"""{block}""")')
+        
+        # Process code blocks
+        else:            
+            # Discard comments
+            if beg[-1] == '#':
+                if end[0] != '#':
+                    raise SyntaxError(f"Unclosed comment block: {beg}{block}{end}")
+                continue
+                        
+            strip_prev, strip_next, block = _strip_minus(block)
+
+            # Discard empty blocks
+            if not block.strip():
+                continue
+
+            # Handle strip prev
+            if strip_prev:
+                push("_rstrip_prev()")
+
+            # Handle block
+            if beg[-1] == '{':
+                if end[0] != '}':
+                    raise SyntaxError(f"Unclosed expression block: {beg}{block}{end}")
+                push(f'write({block.strip()})')
+            elif beg[-1] == '%':
+                if end[0] != '%':
+                    raise SyntaxError(f"Unclosed statement block: {beg}{block}{end}")
+                
+                # Handle depth decrease
+                if block.lstrip().startswith(':'):
+                    if depth == 0:
+                        raise SyntaxError(f"Unexpected indentation: {beg}{block}{end}")
+                    depth -= 1
+                    block = block.lstrip()[1:]
+                    # Skip closing colon
+                    if not block.rstrip().endswith(':'):
+
+                        # Handle strip next
+                        if strip_next:
+                            push("_lstrip_next()")
+
                         continue
-                elif self.autowrite.match(part_stripped):
-                    part = f'write({part_stripped})'
-                lines = part.splitlines()
-                margin = min(len(l) - len(l.lstrip()) for l in lines if l.strip())
-                part = '\n'.join('\t' * offset + l[margin:] for l in lines)
-                if part.endswith(':'):
-                    offset += 1
-            tokens.append(part)
-        if offset:
-            raise SyntaxError(f'{offset} block statement(s) not terminated')
+
+                lines = block.splitlines()
+                prefix = min(len(line) - len(line.lstrip()) for line in lines if line.strip())
+                for line in lines:
+                    push(line[prefix:])
+                
+                # Handle depth increase
+                if block.rstrip().endswith(':'):
+                    depth += 1
+            else:
+                raise SyntaxError(f"Unknown block type: {beg}{block}{end}")
+            
+            # Handle strip next
+            if strip_next:
+                push("_lstrip_next()")
         
-        generated_code = '\n'.join(tokens)
-        if self.generated_code is not None:
-            print(generated_code, file=self.generated_code)
-        return compile(generated_code, '<generated code>', 'exec')
-
-    def render(self, **namespace):
-        """Renders the template according to the given namespace."""
-        stack = []
-        namespace['__file__'] = self.file
-        if self.file:
-            cwd = os.path.dirname(self.file)
-        else:
-            cwd = os.path.dirname(sys.argv[0])
-        namespace['__cwd__'] = cwd
-
-        # Add relpath        
-        def relpath(file):
-            if os.path.isabs(file):
-                return os.path.relpath(file, cwd)
-            return file
-        namespace['relpath'] = relpath
-
-        # Add abspath
-        def abspath(file):
-            if os.path.isabs(file):
-                return file
-            return os.path.join(cwd, file)
-        namespace['abspath'] = abspath
-
-        # Add write
-        def write(*args):
-            for value in args:
-                stack.append(str(value))
-        namespace['write'] = write
-
-        # Add include
-        def include(file):
-            stack.append(Templite(None, abspath(file), self.encoding,
-                    self.delimiters,self.caching, self.generated_code)
-                .render(**namespace))
-        namespace['include'] = include
+    # Compile code
+    code = "\n".join(code)
+    if tmpcode is not None:
+        tmpcode.write(code)
+    file = name or "<string>"
+    code = _compile(code, file, 'exec')
     
-        # Inject namespace to external functions
-        for k, v in namespace.items():
-            if k not in ['relpath', 'abspath', 'write', 'include'] and callable(v):
-                # Be careful with what is done with namespace
-                namespace[k] = v(namespace)
+    # Render function
+    def render(**external_ns):
+        """Renders the template."""
+        buffer = []
+        if name is not None:
+            cwd = os.path.dirname(name)
+        else:
+            cwd = os.getcwd()
 
-        # Execute template code
-        exec(self._code, namespace)
-        return "".join(stack)
+        def write(s):
+            buffer.append(str(s))
+        
+        def _rstrip_prev():
+            buffer.append(_RSTRIP_PREV)
+        
+        def _lstrip_next():
+            buffer.append(_LSTRIP_NEXT)
 
+        def relpath(path):
+            if os.path.isabs(path):
+                return os.path.relpath(path, cwd)
+            return path
+        
+        def abspath(path):
+            if os.path.isabs(path):
+                return path
+            return os.path.join(cwd, path)
+    
+        def include(path):
+            with open(abspath(path), encoding=encoding) as f:
+                render = compile(f, name=relpath(path), delimiters=delimiters, encoding=encoding)
+                buffer.append(render(**external_ns))
+        
+        internal_ns = {
+            'write': write,
+            '_rstrip_prev': _rstrip_prev,
+            '_lstrip_next': _lstrip_next,
+            'relpath': relpath,
+            'abspath': abspath,
+            'include': include,
+            '__cwd__': cwd,
+            '__file__': file,
+        }
+
+        # Inject external
+        for k, v in external_ns.items():
+            external_ns[k] = v({**external_ns, **internal_ns})
+        
+        # Execute code
+        exec(code, {**external_ns, **internal_ns})
+
+        # Strip chunks
+        chunks = []
+        lstrip = False
+        for chunk in buffer:
+            if chunk is _RSTRIP_PREV:
+                prev = chunks.pop().rstrip()
+                if prev:
+                    chunks.append(prev)
+            elif chunk is _LSTRIP_NEXT:
+                lstrip = True
+            elif lstrip:
+                chunk = chunk.lstrip()
+                if chunk:
+                    chunks.append(chunk)
+                lstrip = False
+            else:
+                chunks.append(chunk)
+        return "".join(chunks)
+    
+    return render
+
+
+def _strip_minus(block):
+    """ Strips the minus sign from the beginning and end of a block.
+
+    >>> _strip_minus('- abc -')
+    (True, True, ' abc ')
+    >>> _strip_minus('- abc')
+    (True, False, ' abc')
+    >>> _strip_minus('abc -')
+    (False, True, 'abc ')
+
+    >>> _strip_minus('-  abc  -')
+    (True, True, '  abc  ')
+    >>> _strip_minus('-  abc')
+    (True, False, '  abc')
+    >>> _strip_minus('abc  -')
+    (False, True, 'abc  ')
+
+    Is mandatory to have a space around the minus sign.
+
+    >>> _strip_minus('-3')
+    (False, False, '-3')
+    >>> _strip_minus('3-')
+    (False, False, '3-')
+    >>> _strip_minus('- -3 -')
+    (True, True, ' -3 ')
+    >>> _strip_minus('- -3')
+    (True, False, ' -3')
+    >>> _strip_minus('-3 -')
+    (False, True, '-3 ')
+    """
+    strip_prev = strip_next = False
+    if m := re.search(r'^-\s+', block):
+        block = block[1:]
+        strip_prev = True
+    if m := re.search(r'\s+-$', block):
+        block = block[:-1]
+        strip_next = True
+    return strip_prev, strip_next, block
 
 def parse_args():
     parser = argparse.ArgumentParser(description='A light-weight, fully functional, general purpose templating engine')
@@ -186,38 +263,30 @@ def parse_args():
                         help="Encoding (default: %(default)s)")
     parser.add_argument("-D", "--define", metavar="STRING", action="append",
                         help="Argument passed to the template engine. The format must follow the following syntax '<VAR>=<VALUE>'")
+    parser.add_argument("-c", "--code", metavar="FILE",
+                        help="Write the generated code in this file.")
     args = parser.parse_args()
     if args.define:
         args.__dict__["define"] = dict(definition.split("=") for definition in args.define)
     return args
 
 
+@contextmanager
+def try_open(file_name, mode, encoding, default=None):
+    if file_name:
+        with open(file_name, mode=mode, encoding=encoding) as f:
+            yield f, file_name
+    else:
+        yield default, None
+
+
 def run(args):
-    # Read template
-    if args.input:
-        with open(args.input, "r", encoding=args.encoding) as f:
-            text = f.read()
-        filename=args.input
-    else:
-        text = sys.stdin.read()
-        filename=None
-
-    t = Templite(text, filename, args.encoding)
-
-    # Run template
-    if args.define:
-        txt = t.render(**args.define)
-    else:
-        txt = t.render()
-
-    # Write generated text
-    if args.output:
-        with open(args.output, "w") as f:
-            f.write(txt)
-    else:
-        sys.stdout.write(txt)
-        
-    return 0
+    with try_open(args.input, "r", args.encoding, sys.stdin) as (f, filename), \
+            try_open(args.code, "w", args.encoding) as (tmpcode, _):
+        render = compile(f, name=filename, encoding=args.encoding, tmpcode=tmpcode)
+        txt = render(**args.define)
+    with try_open(args.output, "w", args.encoding, sys.stdout) as (f, _):
+        f.write(txt)
 
 
 def main():
@@ -228,6 +297,7 @@ def main():
         print(f"ERROR: {e}", file=sys.stderr)
         traceback.print_exc()
     exit(1)
+
 
 if __name__ == "__main__":
     main()
