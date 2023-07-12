@@ -217,6 +217,7 @@ def compile(src, name=None, encoding=ENCODING, delimiters=DELIMITERS, tmpcode=No
 def _strip_minus(block):
     """ Strips the minus sign from the beginning and end of a block.
 
+    ```python
     >>> _strip_minus('- abc -')
     (True, True, ' abc ')
     >>> _strip_minus('- abc')
@@ -230,9 +231,11 @@ def _strip_minus(block):
     (True, False, '  abc')
     >>> _strip_minus('abc  -')
     (False, True, 'abc  ')
+    ```
 
     Is mandatory to have a space around the minus sign.
 
+    ```python
     >>> _strip_minus('-3')
     (False, False, '-3')
     >>> _strip_minus('3-')
@@ -243,12 +246,13 @@ def _strip_minus(block):
     (True, False, ' -3')
     >>> _strip_minus('-3 -')
     (False, True, '-3 ')
+    ```
     """
     strip_prev = strip_next = False
-    if m := re.search(r'^-\s+', block):
+    if re.search(r'^-\s+', block):
         block = block[1:]
         strip_prev = True
-    if m := re.search(r'\s+-$', block):
+    if re.search(r'\s+-$', block):
         block = block[:-1]
         strip_next = True
     return strip_prev, strip_next, block

@@ -4,7 +4,7 @@ VERSION = $(shell $(PY) setup.py --version)
 
 SOURCES = $(wildcard templite/*.py)
 
-.PHONY: all clean distclean test push release
+.PHONY: all clean distclean test release
 
 all: test README.md
 
@@ -12,14 +12,12 @@ clean:
 	rm -f README.md *.json
 
 distclean: clean
-	rm -f -r tools
-	rm -rf __pycache__ .mypy_cache
+	rm -f templite/doctest_utils.py
+	rm -r -f tools
+	rm -r -f __pycache__ .mypy_cache
 
-test:
+test: templite/doctest_utils.py
 	$(PY) -m unittest discover -v
-
-push:
-	git push origin HEAD
 
 release:
 	git tag -a v$(VERSION) -m "Release version $(VERSION)"
@@ -35,11 +33,41 @@ README.md: $(SOURCES) tools/py2doc.py tools/doc2md.py
 	($(PY) tools/py2doc.py $(SOURCES) | \
 	$(PY) tools/doc2md.py -l 2 -u $(URL) ) >> README.md
 
+templite/doctest_utils.py:
+	echo "# -*- coding: utf-8 -*-" > $@
+	echo "" >> $@
+	echo "################################################################################" >> $@
+	echo "# DO NOT EDIT!!!" >> $@
+	echo "# This file was downloaded from:" >> $@
+	echo "# https://raw.githubusercontent.com/Kerrigan29a/microdoc/main/doctest_utils.py" >> $@
+	echo "# and the Makefile will remove any change. " >> $@
+	echo "###" >> $@
+	echo "" >> $@
+	curl https://raw.githubusercontent.com/Kerrigan29a/microdoc/main/doctest_utils.py >> $@
+
 tools/py2doc.py: tools
-	curl https://raw.githubusercontent.com/Kerrigan29a/microdoc/main/py2doc.py -o $@
+	echo "# -*- coding: utf-8 -*-" > $@
+	echo "" >> $@
+	echo "################################################################################" >> $@
+	echo "# DO NOT EDIT!!!" >> $@
+	echo "# This file was downloaded from:" >> $@
+	echo "# https://raw.githubusercontent.com/Kerrigan29a/microdoc/main/doctest_utils.py" >> $@
+	echo "# and the Makefile will remove any change. " >> $@
+	echo "###" >> $@
+	echo "" >> $@
+	curl https://raw.githubusercontent.com/Kerrigan29a/microdoc/main/py2doc.py >> $@
 
 tools/doc2md.py: tools
-	curl https://raw.githubusercontent.com/Kerrigan29a/microdoc/main/doc2md.py -o $@
+	echo "# -*- coding: utf-8 -*-" > $@
+	echo "" >> $@
+	echo "################################################################################" >> $@
+	echo "# DO NOT EDIT!!!" >> $@
+	echo "# This file was downloaded from:" >> $@
+	echo "# https://raw.githubusercontent.com/Kerrigan29a/microdoc/main/doctest_utils.py" >> $@
+	echo "# and the Makefile will remove any change. " >> $@
+	echo "###" >> $@
+	echo "" >> $@
+	curl https://raw.githubusercontent.com/Kerrigan29a/microdoc/main/doc2md.py >> $@
 
 tools:
 	mkdir -p $@

@@ -218,9 +218,7 @@ Strips the minus sign from the beginning and end of a block.
 (True, False, ' abc')
 >>> _strip_minus('abc -')
 (False, True, 'abc ')
-```
 
-```python
 >>> _strip_minus('-  abc  -')
 (True, True, '  abc  ')
 >>> _strip_minus('-  abc')
@@ -245,10 +243,30 @@ Is mandatory to have a space around the minus sign.
 ```
 
 
-
 ## Module [\_\_main\_\_](https://github.com/kerrigan29a/templite/blob/main/templite/__main__.py#L1)
 This is the entry point of the templite package.
 It allows to call the templite compiler from the command line.
+
+
+## Module [doctest\_utils](https://github.com/kerrigan29a/templite/blob/main/templite/doctest_utils.py#L1)
+Extension of [doctest](https://docs.python.org/3/library/doctest.html) to allow
+testing Markdown texts.
+
+### Class [doctest\_utils.MarkdownDocTestParser](https://github.com/kerrigan29a/templite/blob/main/templite/doctest_utils.py#L32)
+A [doctest.DocTestParser](https://docs.python.org/3/library/doctest.html#doctest.DocTestParser)
+that removes code blocks from Markdown files before parsing them.
+
+This allows to write Markdown files with code blocks that can be tested with
+[doctest](https://docs.python.org/3/library/doctest.html).
+
+### Function [doctest\_utils.testmod](https://github.com/kerrigan29a/templite/blob/main/templite/doctest_utils.py#L44)
+```python
+def testmod(m=None, name=None, globs=None, verbose=None, report=True, optionflags=0, extraglobs=None, raise_on_error=False, exclude_empty=False, parser=DocTestParser()): ...
+```
+Same as [doctest.testmod](https://docs.python.org/3/library/doctest.html#doctest.testmod)
+but allows to specify a custom DocTestParser.
+
+All `master` related code is removed.
 
 
 
@@ -287,11 +305,15 @@ It allows to call the templite compiler from the command line.
 [`__init__.main`]: #function-__init__-main "Function main"
 [__main__]: #module-__main__ "Module __main__"
 [`__main__`]: #module-__main__ "Module __main__"
+[doctest_utils]: #module-doctest_utils "Module doctest_utils"
+[`doctest_utils`]: #module-doctest_utils "Module doctest_utils"
+[doctest_utils.MarkdownDocTestParser]: #class-doctest_utils-markdowndoctestparser "Class MarkdownDocTestParser"
+[`doctest_utils.MarkdownDocTestParser`]: #class-doctest_utils-markdowndoctestparser "Class MarkdownDocTestParser"
+[doctest_utils.MarkdownDocTestParser.parse]: #function-doctest_utils-markdowndoctestparser-parse "Function parse"
+[`doctest_utils.MarkdownDocTestParser.parse`]: #function-doctest_utils-markdowndoctestparser-parse "Function parse"
+[doctest_utils.testmod]: #function-doctest_utils-testmod "Function testmod"
+[`doctest_utils.testmod`]: #function-doctest_utils-testmod "Function testmod"
 [tests]: #module-tests "Module tests"
 [`tests`]: #module-tests "Module tests"
-[tests.MarkdownTestParser]: #class-tests-markdowntestparser "Class MarkdownTestParser"
-[`tests.MarkdownTestParser`]: #class-tests-markdowntestparser "Class MarkdownTestParser"
-[tests.MarkdownTestParser.parse]: #function-tests-markdowntestparser-parse "Function parse"
-[`tests.MarkdownTestParser.parse`]: #function-tests-markdowntestparser-parse "Function parse"
 [tests.load_tests]: #function-tests-load_tests "Function load_tests"
 [`tests.load_tests`]: #function-tests-load_tests "Function load_tests"
