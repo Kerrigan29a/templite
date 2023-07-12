@@ -10,7 +10,7 @@ It provide all the functionality.
 
 __author__ = "Javier Escalada Gómez"
 __email__ = "kerrigan29a@gmail.com"
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 __license__ = "BSD 3-Clause Clear License"
 
 import argparse
@@ -270,8 +270,7 @@ def parse_args():
     parser.add_argument("-c", "--code", metavar="FILE",
                         help="Write the generated code in this file.")
     args = parser.parse_args()
-    if args.define:
-        args.__dict__["define"] = dict(definition.split("=") for definition in args.define)
+    args.__dict__["define"] = dict(definition.split("=") for definition in args.define)if args.define else {}
     return args
 
 
