@@ -1,0 +1,21 @@
+
+{%-
+	import shutil
+	from pathlib import Path
+	
+	IN = Path(__file__)
+	OUT = IN.stem
+	PYTHON = 'python3' if shutil.which('python3') else 'python'
+-%}
+
+# WARNING!!! Generated Makefile. DO NOT EDIT
+# Command:
+#   {{PYTHON}} ../../templite/__init__.py -e utf-8 -i {{IN}} -o {{OUT}}
+
+all:
+	@echo Everything DONE
+
+# Makefile is able to regenerate itself
+# From: https://www.gnu.org/software/make/manual/html_node/Remaking-Makefiles.html
+{{OUT}}: {{IN}}
+	{{PYTHON}} ../../templite/__init__.py -e utf-8 -i {{IN}} -o {{ OUT }}
