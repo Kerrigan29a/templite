@@ -24,8 +24,9 @@ release:
 	git push origin HEAD
 	git push origin tag v$(VERSION)
 
-README.md: $(SOURCES) tools/py2doc.py tools/doc2md.py
+README.md: README.md.in $(SOURCES) tools/py2doc.py tools/doc2md.py
 	cat README.md.in > README.md
+	echo '# Usage' >> README.md
 	echo '~~~' >> README.md
 	$(PY) -m templite --help >> README.md
 	echo '~~~' >> README.md
